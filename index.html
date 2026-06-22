@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UPSC CSE 2027 — Command Centre</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0f0f13; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
+    .sidebar { background: #13131a; border-right: 1px solid #2d2d3a; }
+    .card { background: #1a1a24; border: 1px solid #2d2d3a; }
+    .accent { color: #6c63ff; }
+    .accent-bg { background: #6c63ff; }
+    .section { display: none; animation: fadeIn 0.15s ease; }
+    .section.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .nav-link { transition: all 0.2s; cursor: pointer; }
+    .nav-link:hover, .nav-link.active { background: #6c63ff22; color: #6c63ff; border-left: 3px solid #6c63ff; }
+    .nav-link { border-left: 3px solid transparent; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #13131a; } ::-webkit-scrollbar-thumb { background: #6c63ff55; border-radius: 3px; }
+    .progress-bar { background: #2d2d3a; border-radius: 999px; overflow: hidden; height: 8px; }
+    .progress-fill { background: linear-gradient(90deg, #6c63ff, #a78bfa); height: 100%; transition: width 0.5s; border-radius: 999px; }
+    .file-card:hover { border-color: #6c63ff55; transform: translateY(-1px); transition: all 0.2s; }
+    .status-dot { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+    .status-dot:hover { transform: scale(1.3); }
+    .timer-display { font-family: 'Courier New', monospace; font-size: 4rem; letter-spacing: 0.1em; color: #6c63ff; text-shadow: 0 0 20px #6c63ff44; }
+    .revision-row-overdue { background: #3b0f0f; } .revision-row-due { background: #2d1f00; } .revision-row-ok { background: #0f2d1a; }
+    input, textarea, select { background: #0f0f13 !important; border: 1px solid #2d2d3a !important; color: #e2e8f0 !important; }
+    input:focus, textarea:focus, select:focus { outline: none !important; border-color: #6c63ff !important; box-shadow: 0 0 0 2px #6c63ff22 !important; }
+    .modal-overlay { position: fixed; inset: 0; background: #000000aa; z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .tag-ncert { background: #1e3a5f; color: #60a5fa; } .tag-reference { background: #1a2e1a; color: #4ade80; } .tag-syllabus { background: #2d1f00; color: #fbbf24; }
+  </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- Mobile hamburger -->
+<div class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 md:hidden" style="background:#13131a;border-bottom:1px solid #2d2d3a">
+  <span class="font-bold text-lg accent">UPSC 2027</span>
+  <button id="hamburger" class="p-2 rounded" style="background:#1a1a24">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+</div>
+
+<!-- Sidebar -->
+<div id="sidebar" class="sidebar fixed md:relative z-40 flex-shrink-0 w-64 h-full flex flex-col pt-0 md:pt-0 transform -translate-x-full md:translate-x-0 transition-transform duration-200">
+  <div class="px-6 py-5 border-b" style="border-color:#2d2d3a">
+    <div class="font-bold text-xl accent">UPSC CSE</div>
+    <div class="text-xs mt-1" style="color:#888">Command Centre — 2027</div>
+  </div>
+  <nav class="flex-1 overflow-y-auto py-4">
+    <div class="nav-link active px-6 py-3 text-sm font-medium" data-section="dashboard">📊 Dashboard</div>
+    <div class="nav-link px-6 py-3 text-sm font-medium" data-section="syllabus">📋 Syllabus Tracker</div>
+    <div class="nav-link px-6 py-3 text-sm font-medium" data-section="material">📚 Study Material</div>
+    <div class="nav-link px-6 py-3 text-sm font-medium" data-section="resources">🔗 Resources</div>
+    <div class="nav-link px-6 py-3 text-sm font-medium" data-section="log">📝 Daily Log</div>
+    <div class="nav-link px-6 py-3 text-sm font-medium" data-section="revision">🔁 Revision Tracker</div>
+    <div class="nav-link px-6 py-3 text-sm font-medium" data-section="timer">⏱ Mock Test Timer</div>
+  </nav>
+  <div class="px-6 py-4 text-xs" style="color:#555;border-top:1px solid #2d2d3a">CSE 2027 — Vansh<br>Built with Claude Code</div>
+</div>
+
+<!-- Overlay for mobile sidebar -->
+<div id="sidebar-overlay" class="fixed inset-0 z-30 bg-black bg-opacity-50 hidden md:hidden" onclick="closeSidebar()"></div>
+
+<!-- Main -->
+<div class="flex-1 flex flex-col overflow-hidden pt-12 md:pt-0">
+  <main class="flex-1 overflow-y-auto p-4 md:p-8">
+
+    <!-- DASHBOARD -->
+    <div id="sec-dashboard" class="section active">
+      <h1 class="text-2xl font-bold mb-6">📊 Dashboard</h1>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="card rounded-xl p-5">
+          <div class="text-xs mb-1" style="color:#888">PRELIMS COUNTDOWN</div>
+          <div id="countdown" class="text-3xl font-bold accent">—</div>
+          <div class="text-xs mt-1" style="color:#555">days to 24 May 2027</div>
+        </div>
+        <div class="card rounded-xl p-5 md:col-span-2">
+          <div class="text-xs mb-2" style="color:#888">TODAY'S FOCUS</div>
+          <textarea id="focus-area" rows="3" class="w-full rounded-lg p-3 text-sm resize-none" placeholder="What are you working on today?"></textarea>
+        </div>
+      </div>
+      <div class="card rounded-xl p-5 mb-6">
+        <div class="text-xs mb-1" style="color:#888">DAILY QUOTE</div>
+        <div id="quote" class="text-sm italic mt-1" style="color:#a78bfa"></div>
+      </div>
+      <div class="card rounded-xl p-5">
+        <div class="text-sm font-semibold mb-4">Overall Progress by Paper</div>
+        <div id="progress-bars" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- SYLLABUS -->
+    <div id="sec-syllabus" class="section">
+      <h1 class="text-2xl font-bold mb-6">📋 Syllabus Tracker</h1>
+      <div id="syllabus-content" class="space-y-6"></div>
+    </div>
+
+    <!-- STUDY MATERIAL -->
+    <div id="sec-material" class="section">
+      <h1 class="text-2xl font-bold mb-6">📚 Study Material</h1>
+      <p class="text-sm mb-4" style="color:#888">Click the status dot to cycle: 🔴 Not Started → 🟡 In Progress → 🟢 Read</p>
+      <div id="material-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+
+    <!-- RESOURCES -->
+    <div id="sec-resources" class="section">
+      <h1 class="text-2xl font-bold mb-6">🔗 Resources & Links</h1>
+      <div id="resources-content" class="space-y-6"></div>
+    </div>
+
+    <!-- DAILY LOG -->
+    <div id="sec-log" class="section">
+      <h1 class="text-2xl font-bold mb-6">📝 Daily Log</h1>
+      <div class="card rounded-xl p-5 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+          <div class="md:col-span-3">
+            <textarea id="log-text" rows="4" class="w-full rounded-lg p-3 text-sm resize-none" placeholder="What did you study today? Notes, insights, concepts..."></textarea>
+            <div class="text-xs mt-1" style="color:#555">Word count: <span id="log-wc">0</span></div>
+          </div>
+          <div class="flex flex-col gap-3">
+            <select id="log-tag" class="rounded-lg p-2 text-sm">
+              <option>Polity</option><option>History</option><option>Geography</option><option>Economy</option><option>Environment</option><option>PSIR</option><option>Current Affairs</option><option>CSAT</option><option>Essay</option><option>General</option>
+            </select>
+            <button onclick="addLogEntry()" class="accent-bg rounded-lg py-2 text-sm font-semibold text-white hover:opacity-90">+ Add Entry</button>
+          </div>
+        </div>
+      </div>
+      <div class="mb-4">
+        <input id="log-search" type="text" class="w-full rounded-lg p-3 text-sm" placeholder="🔍 Search entries by tag or text..." oninput="renderLog()" />
+      </div>
+      <div id="log-entries" class="space-y-3"></div>
+    </div>
+
+    <!-- REVISION -->
+    <div id="sec-revision" class="section">
+      <h1 class="text-2xl font-bold mb-6">🔁 Revision Tracker</h1>
+      <div class="card rounded-xl p-5 mb-6">
+        <div class="text-sm font-semibold mb-3">Add Topic for Revision</div>
+        <div class="flex flex-wrap gap-3">
+          <input id="rev-topic" type="text" class="flex-1 rounded-lg p-2 text-sm" placeholder="Topic name..." />
+          <select id="rev-subject" class="rounded-lg p-2 text-sm">
+            <option>Polity</option><option>History</option><option>Geography</option><option>Economy</option><option>Environment</option><option>PSIR P1</option><option>PSIR P2</option><option>Current Affairs</option><option>CSAT</option><option>Essay</option>
+          </select>
+          <button onclick="addRevision()" class="accent-bg px-4 rounded-lg text-sm font-semibold text-white hover:opacity-90">Add</button>
+        </div>
+      </div>
+      <div class="card rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr style="background:#13131a;border-bottom:1px solid #2d2d3a">
+              <th class="px-4 py-3 text-left">Topic</th>
+              <th class="px-4 py-3 text-left">Subject</th>
+              <th class="px-4 py-3 text-left">Last Revised</th>
+              <th class="px-4 py-3 text-center">Times</th>
+              <th class="px-4 py-3 text-left">Next Due</th>
+              <th class="px-4 py-3 text-center">Action</th>
+            </tr></thead>
+            <tbody id="revision-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIMER -->
+    <div id="sec-timer" class="section">
+      <h1 class="text-2xl font-bold mb-6">⏱ Mock Test Timer</h1>
+      <div class="card rounded-xl p-6 max-w-2xl mx-auto">
+        <div class="flex flex-wrap gap-2 mb-6 justify-center">
+          <button class="preset-btn px-4 py-2 rounded-lg text-sm font-medium" style="background:#1a1a24;border:1px solid #2d2d3a" onclick="setPreset('Prelims GS1',120)">Prelims GS1 (2h)</button>
+          <button class="preset-btn px-4 py-2 rounded-lg text-sm font-medium" style="background:#1a1a24;border:1px solid #2d2d3a" onclick="setPreset('CSAT',120)">CSAT (2h)</button>
+          <button class="preset-btn px-4 py-2 rounded-lg text-sm font-medium" style="background:#1a1a24;border:1px solid #2d2d3a" onclick="setPreset('Mains GS',180)">Mains GS (3h)</button>
+          <button class="preset-btn px-4 py-2 rounded-lg text-sm font-medium" style="background:#1a1a24;border:1px solid #2d2d3a" onclick="setPreset('Mains Optional',180)">Optional (3h)</button>
+          <button class="preset-btn px-4 py-2 rounded-lg text-sm font-medium" style="background:#1a1a24;border:1px solid #2d2d3a" onclick="setPreset('Essay',180)">Essay (3h)</button>
+          <button class="preset-btn px-4 py-2 rounded-lg text-sm font-medium" style="background:#1a1a24;border:1px solid #2d2d3a" onclick="promptCustom()">Custom</button>
+        </div>
+        <div class="text-center mb-2" style="color:#888;font-size:0.85rem" id="timer-preset-label">Select a preset to begin</div>
+        <div class="timer-display text-center my-6" id="timer-display">00:00:00</div>
+        <div class="progress-bar mb-6"><div class="progress-fill" id="timer-progress" style="width:100%"></div></div>
+        <div class="flex gap-3 justify-center">
+          <button onclick="startTimer()" class="accent-bg px-6 py-2 rounded-lg font-semibold text-white hover:opacity-90">▶ Start</button>
+          <button onclick="pauseTimer()" class="px-6 py-2 rounded-lg font-semibold" style="background:#2d2d3a" id="pause-btn">⏸ Pause</button>
+          <button onclick="resetTimer()" class="px-6 py-2 rounded-lg font-semibold" style="background:#2d2d3a">↺ Reset</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal-overlay hidden">
+  <div class="card rounded-xl p-6 max-w-sm w-full mx-4 text-center">
+    <div class="text-lg font-semibold mb-2">Session Complete! 🎉</div>
+    <div class="text-sm mb-4" style="color:#888">Log this session to your Daily Log?</div>
+    <div class="flex gap-3 justify-center">
+      <button onclick="logSession()" class="accent-bg px-5 py-2 rounded-lg font-semibold text-white">Yes, log it</button>
+      <button onclick="closeModal()" class="px-5 py-2 rounded-lg font-semibold" style="background:#2d2d3a">No thanks</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== DATA ==========
+const QUOTES = [
+  '"Discipline is the bridge between goals and accomplishment." — Jim Rohn',
+  '"The future depends on what you do today." — Gandhi',
+  '"Success is the sum of small efforts repeated day in and day out." — Robert Collier',
+  '"Don\'t watch the clock; do what it does. Keep going." — Sam Levenson',
+  '"It always seems impossible until it\'s done." — Mandela',
+  '"Push yourself, because no one else is going to do it for you."',
+  '"Great things never come from comfort zones."',
+  '"Dream it. Wish it. Do it."',
+  '"Success doesn\'t just find you. You have to go out and get it."',
+  '"The harder you work for something, the greater you\'ll feel when you achieve it."'
+];
+
+const SYLLABUS = {
+  'Prelims GS1': ['Current events (national & international)','History of India & Indian National Movement','Indian & World Geography (Physical, Social, Economic)','Indian Polity & Governance (Constitution, Political System, Panchayati Raj, Public Policy, Rights Issues)','Economic & Social Development (Sustainable Development, Poverty, Inclusion, Demographics, Social Sector)','Environmental Ecology, Biodiversity & Climate Change','General Science'],
+  'Prelims CSAT': ['Comprehension','Interpersonal & Communication Skills','Logical Reasoning & Analytical Ability','Decision Making & Problem Solving','General Mental Ability','Basic Numeracy (Class X)','Data Interpretation'],
+  'Mains GS1': ['Indian Culture (art forms, literature, architecture ancient to modern)','Modern Indian History (mid-18th century to present)','The Freedom Struggle','Post-independence consolidation & reorganisation','History of the world (18th century onwards — world wars, colonisation, political philosophies)','Indian Society (salient features, diversity, role of women, urbanisation, communalism, secularism)','World Geography (physical, human, economic geography)','Distribution of key natural resources'],
+  'Mains GS2': ['Indian Constitution (historical underpinnings, evolution, features, amendments, basic structure)','Functions & responsibilities of Union and States','Parliament and State Legislatures','Executive and Judiciary','Ministries and Departments','Government policies and interventions','Statutory, regulatory and quasi-judicial bodies','Development processes and NGOs','Welfare schemes for vulnerable sections','Social sector — Health, Education','Governance (transparency, accountability, e-governance, RTI, citizens charters)','Role of civil services in democracy','India and its neighbourhood relations','Bilateral, regional and global groupings','Effect of foreign countries\' policies on India\'s interests','Indian Diaspora','International institutions (UN, WTO, IMF, World Bank)'],
+  'Mains GS3': ['Indian Economy and planning','Resource mobilisation','Growth, development and employment','Agriculture (economics of farming, major crops, irrigation, storage, marketing, MSP, PDS)','Land reforms in India','Food security','Industrial policy and industrial growth','Infrastructure (energy, ports, roads, airports, railways)','Investment models','Science and Technology (developments, applications, indigenisation, IT, Space, Robotics, Nano-tech, Bio-tech)','Environment (conservation, pollution, degradation, EIA)','Disaster Management','Internal security — role of external state & non-state actors','Internal security challenges, organised crime, terrorism linkages','Border management','Security forces and their mandates'],
+  'Mains GS4': ['Ethics and human interface','Attitude','Aptitude for Civil Service','Emotional intelligence','Moral thinkers and philosophers (India & world)','Public/Civil service values and ethics','Probity in governance','Case Studies on ethics'],
+  'Mains Essay': ['Essay Paper A — Two essays (250 marks total)'],
+  'PSIR Paper 1 — Political Theory': ['Liberty','Equality','Rights','Justice','Power','Democracy','Ideology','Secularism','Nationalism'],
+  'PSIR Paper 1 — Indian Politics': ['Constitution making','Nature of Indian State','Federalism','Legislature','Executive','Judiciary','Local government & decentralisation','Grassroots democracy','Public policy','Centre-State relations','Electoral politics','Party system','Pressure groups','National integration'],
+  'PSIR Paper 2 — Comparative Politics': ['Approaches (behavioural, post-behavioural, Marxist)','State in comparative perspective','Globalisation','Western political thought (Plato to contemporary)'],
+  'PSIR Paper 2 — International Relations': ['Evolution of IR','Cold War','Decolonisation','UN system','Bretton Woods institutions','Non-Alignment','Contemporary world order','India\'s foreign policy','India–Pakistan','India–China','India–USA','India–Russia','India–EU','South Asia','Indian Ocean region']
+};
+
+const FILES = [
+  { name: 'UPSC Syllabus', file: 'upsc-syllabus.pdf', id: '1Y5P7lxBQuCl7RLXwQQpPoiZlqblJfQU6', tag: 'syllabus' },
+  { name: 'Indian Polity — M. Laxmikanth (2025)', file: 'laxmikanth.pdf', id: '1kwZoCtz9gdPPe2iqcxAHU3M8SBhysWFx', tag: 'reference' },
+  { name: 'DD Basu — Introduction to Constitution', file: 'dd-basu.pdf', id: '1d6vD0EVqjp52GXJ49kMnAPqVUUpssVap', tag: 'reference' },
+  { name: 'NCERT Class 12 — History Part 1', file: 'ncert-12-hist-1.pdf', id: '1mXc7dzYptGF5Hl9GoGztAtjhoFI6G5oz', tag: 'ncert' },
+  { name: 'NCERT Class 12 — History Part 2', file: 'ncert-12-hist-2.pdf', id: '1a2nBKSw81JapzKgDcFzoamSjKR63Y_Ye', tag: 'ncert' },
+  { name: 'NCERT Class 12 — History Part 3', file: 'ncert-12-hist-3.pdf', id: '10qBJUT4afHs725Km8S1Iuhc3JNLMaeb-', tag: 'ncert' },
+  { name: 'NCERT Class 12 — Political Science', file: 'ncert-12-polsci.pdf', id: '1-Wi6Js0KB7pXAEjb7xZT0G4Y1fEF7UPB', tag: 'ncert' },
+  { name: 'NCERT Class 11 — History', file: 'ncert-11-hist.pdf', id: '1MMqgCA4mj8bHA2bs5JLnYQkB2vEj1d8i', tag: 'ncert' },
+  { name: 'NCERT Class 11 — Political Science', file: 'ncert-11-polsci.pdf', id: '1nmZRFlbzre4h1kbPpiysXdO07vOAczxz', tag: 'ncert' },
+  { name: 'NCERT Class 10 — History', file: 'ncert-10-hist.pdf', id: '1RhSoiSiQLkdZ-i4OKxCnWQQ43zKzC_Gi', tag: 'ncert' },
+  { name: 'NCERT Class 10 — Political Science', file: 'ncert-10-polsci.pdf', id: '1klfZPaMJfis48E3MsbwUmgz7uRM5gBsA', tag: 'ncert' },
+  { name: 'History Class 6 (NCERT)', file: 'history6.pdf', id: '14oqqlQEZPblQCBBdcoYd0asHWEtuQ2iF', tag: 'ncert' },
+  { name: 'Social Science Class 7 (NCERT)', file: 'class7-ss.pdf', id: '1RPh1m_OHtN54qxZ4AGZRLNKOIInszVh7', tag: 'ncert' },
+  { name: 'NCERT Class 9 — All Subjects', file: 'class9.pdf', id: '1j8H5dBnvGUzphooFXUhLCHheClHAs9M_', tag: 'ncert' }
+];
+
+const RESOURCES = [
+  { cat: '🏛️ Official', links: [
+    { name: 'UPSC Official Site', url: 'https://upsc.gov.in' },
+    { name: 'UPSC Previous Year Papers', url: 'https://upsc.gov.in/examinations/previous-question-papers' },
+    { name: 'NCERT eBooks', url: 'https://ncert.nic.in/ebooks.php' }
+  ]},
+  { cat: '📄 Syllabus', links: [
+    { name: 'UPSC Full Syllabus (Insights)', url: 'https://www.insightsonindia.com/wp-content/uploads/2013/07/upsc-syllabus.pdf' },
+    { name: 'Tathaastu Syllabus Compilation', url: 'https://tathastuics.com/assets/SYLLABUS-COMPILATION-book-complete.pdf' }
+  ]},
+  { cat: '📰 Current Affairs', links: [
+    { name: 'The Hindu', url: 'https://thehindu.com' },
+    { name: 'Indian Express', url: 'https://indianexpress.com' },
+    { name: 'The Guardian', url: 'https://theguardian.com' },
+    { name: 'Foreign Affairs', url: 'https://foreignaffairs.com' }
+  ]},
+  { cat: '📚 UPSC Prep Portals', links: [
+    { name: 'Insights on India', url: 'https://www.insightsonindia.com' },
+    { name: 'ForumIAS', url: 'https://forumias.com' },
+    { name: 'Vision IAS', url: 'https://www.visionias.in' },
+    { name: 'Unacademy UPSC', url: 'https://unacademy.com/goal/upsc-civil-services-ias-preparation/KSCGY' }
+  ]},
+  { cat: '🎯 PSIR Optional', links: [
+    { name: 'PSIR Answer Writing (ForumIAS)', url: 'https://forumias.com/blog/psir/' }
+  ]}
+];
+
+// ========== NAVIGATION ==========
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  document.querySelector('[data-section="' + id + '"]').classList.add('active');
+  closeSidebar();
+}
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => showSection(link.dataset.section));
+});
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.add('-translate-x-full');
+  document.getElementById('sidebar').classList.remove('translate-x-0');
+  document.getElementById('sidebar-overlay').classList.add('hidden');
+}
+document.getElementById('hamburger').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('-translate-x-full');
+  document.getElementById('sidebar').classList.toggle('translate-x-0');
+  document.getElementById('sidebar-overlay').classList.toggle('hidden');
+});
+
+// ========== DASHBOARD ==========
+function initDashboard() {
+  // Countdown
+  function updateCountdown() {
+    const prelims = new Date('2027-05-24T00:00:00');
+    const now = new Date();
+    const days = Math.ceil((prelims - now) / 86400000);
+    document.getElementById('countdown').textContent = days > 0 ? days : 'Day has arrived!';
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  // Quote
+  const doy = Math.floor((new Date() - new Date(new Date().getFullYear(),0,0)) / 86400000);
+  document.getElementById('quote').textContent = QUOTES[doy % QUOTES.length];
+
+  // Focus
+  const fa = document.getElementById('focus-area');
+  fa.value = localStorage.getItem('upsc_focus') || '';
+  fa.addEventListener('input', () => localStorage.setItem('upsc_focus', fa.value));
+
+  // Progress bars
+  renderProgressBars();
+}
+
+function renderProgressBars() {
+  const container = document.getElementById('progress-bars');
+  container.innerHTML = '';
+  Object.keys(SYLLABUS).forEach(paper => {
+    const topics = SYLLABUS[paper];
+    const checked = topics.filter((t,i) => localStorage.getItem('upsc_syllabus_' + paper + '_' + i) === '1').length;
+    const pct = topics.length ? Math.round((checked / topics.length) * 100) : 0;
+    container.innerHTML += `<div>
+      <div class="flex justify-between text-xs mb-1"><span style="color:#ccc">${paper}</span><span style="color:#6c63ff">${pct}% (${checked}/${topics.length})</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  });
+}
+
+// ========== SYLLABUS ==========
+function initSyllabus() {
+  const container = document.getElementById('syllabus-content');
+  container.innerHTML = '';
+  Object.keys(SYLLABUS).forEach(paper => {
+    const topics = SYLLABUS[paper];
+    const checked = topics.filter((t,i) => localStorage.getItem('upsc_syllabus_' + paper + '_' + i) === '1').length;
+    const pct = topics.length ? Math.round((checked / topics.length) * 100) : 0;
+    let items = topics.map((t, i) => {
+      const isChecked = localStorage.getItem('upsc_syllabus_' + paper + '_' + i) === '1';
+      return `<label class="flex items-start gap-3 cursor-pointer hover:bg-white hover:bg-opacity-5 p-2 rounded-lg">
+        <input type="checkbox" class="mt-0.5 accent-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSyllabus('${paper}',${i},this)" style="width:16px;height:16px;cursor:pointer;accent-color:#6c63ff" />
+        <span class="text-sm ${isChecked ? 'line-through' : ''}" style="color:${isChecked ? '#555' : '#ccc'}">${t}</span>
+      </label>`;
+    }).join('');
+    container.innerHTML += `<div class="card rounded-xl p-5">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-semibold text-sm accent">${paper}</h3>
+        <span class="text-xs" style="color:#888">${pct}% complete</span>
+      </div>
+      <div class="progress-bar mb-4"><div class="progress-fill" id="prog-${paper.replace(/[^a-z0-9]/gi,'_')}" style="width:${pct}%"></div></div>
+      <div class="space-y-1">${items}</div>
+    </div>`;
+  });
+}
+
+function toggleSyllabus(paper, idx, el) {
+  localStorage.setItem('upsc_syllabus_' + paper + '_' + idx, el.checked ? '1' : '0');
+  const label = el.closest('label');
+  const span = label.querySelector('span');
+  span.style.textDecoration = el.checked ? 'line-through' : 'none';
+  span.style.color = el.checked ? '#555' : '#ccc';
+  // update bar
+  const topics = SYLLABUS[paper];
+  const checked = topics.filter((t,i) => localStorage.getItem('upsc_syllabus_' + paper + '_' + i) === '1').length;
+  const pct = Math.round((checked / topics.length) * 100);
+  const bar = document.getElementById('prog_' + paper.replace(/[^a-z0-9]/gi,'_'));
+  if(bar) bar.style.width = pct + '%';
+  renderProgressBars();
+}
+
+// ========== STUDY MATERIAL ==========
+function initMaterial() {
+  const grid = document.getElementById('material-grid');
+  grid.innerHTML = '';
+  FILES.forEach(f => {
+    const status = localStorage.getItem('upsc_file_' + f.file) || 'red';
+    const tagClass = f.tag === 'ncert' ? 'tag-ncert' : f.tag === 'reference' ? 'tag-reference' : 'tag-syllabus';
+    const tagLabel = f.tag === 'ncert' ? 'NCERT' : f.tag === 'reference' ? 'Reference' : 'Syllabus';
+    const driveUrl = `https://drive.google.com/file/d/${f.id}/view`;
+    grid.innerHTML += `<div class="card file-card rounded-xl p-4 flex flex-col gap-3">
+      <div class="flex items-start justify-between gap-2">
+        <a href="${driveUrl}" target="_blank" class="font-medium text-sm hover:text-purple-400 leading-tight flex-1">${f.name}</a>
+        <div class="status-dot" id="dot-${f.file}" style="background:${status}" onclick="cycleStatus('${f.file}',this)" title="Click to change status"></div>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-xs px-2 py-0.5 rounded-full font-medium ${tagClass}">${tagLabel}</span>
+        <a href="${driveUrl}" target="_blank" class="text-xs accent hover:underline">Open →</a>
+      </div>
+    </div>`;
+  });
+}
+
+function cycleStatus(file, el) {
+  const cycle = { 'red': '#f59e0b', '#f59e0b': '#22c55e', '#22c55e': 'red' };
+  const cur = el.style.background;
+  const next = cycle[cur] || 'red';
+  el.style.background = next;
+  localStorage.setItem('upsc_file_' + file, next);
+}
+
+// ========== RESOURCES ==========
+function initResources() {
+  const container = document.getElementById('resources-content');
+  container.innerHTML = '';
+  RESOURCES.forEach(group => {
+    const links = group.links.map(l =>
+      `<a href="${l.url}" target="_blank" class="card rounded-lg p-3 flex items-center justify-between hover:border-purple-500 transition-colors">
+        <span class="text-sm">${l.name}</span>
+        <svg width="14" height="14" fill="none" stroke="#6c63ff" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>`
+    ).join('');
+    container.innerHTML += `<div>
+      <h3 class="font-semibold text-sm mb-3 accent">${group.cat}</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">${links}</div>
+    </div>`;
+  });
+}
+
+// ========== DAILY LOG ==========
+document.getElementById('log-text').addEventListener('input', function() {
+  const wc = this.value.trim().split(/\s+/).filter(w=>w).length;
+  document.getElementById('log-wc').textContent = wc;
+});
+
+function addLogEntry() {
+  const text = document.getElementById('log-text').value.trim();
+  if (!text) return;
+  const tag = document.getElementById('log-tag').value;
+  const entries = JSON.parse(localStorage.getItem('upsc_log') || '[]');
+  entries.unshift({ date: new Date().toISOString(), tag, text });
+  localStorage.setItem('upsc_log', JSON.stringify(entries));
+  document.getElementById('log-text').value = '';
+  document.getElementById('log-wc').textContent = '0';
+  renderLog();
+}
+
+function renderLog() {
+  const search = (document.getElementById('log-search').value || '').toLowerCase();
+  const entries = JSON.parse(localStorage.getItem('upsc_log') || '[]');
+  const filtered = entries.filter(e =>
+    e.text.toLowerCase().includes(search) || e.tag.toLowerCase().includes(search)
+  ).slice(0, 10);
+  const colors = { Polity:'#6c63ff', History:'#f59e0b', Geography:'#22c55e', Economy:'#06b6d4', Environment:'#84cc16', PSIR:'#a78bfa', 'Current Affairs':'#fb7185', CSAT:'#f97316', Essay:'#e879f9', General:'#94a3b8' };
+  document.getElementById('log-entries').innerHTML = filtered.length ? filtered.map(e => {
+    const d = new Date(e.date);
+    const dateStr = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) + ' ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    const wc = e.text.trim().split(/\s+/).filter(w=>w).length;
+    const col = colors[e.tag] || '#888';
+    return `<div class="card rounded-xl p-4">
+      <div class="flex items-center gap-3 mb-2 flex-wrap">
+        <span class="text-xs" style="color:#888">${dateStr}</span>
+        <span class="text-xs px-2 py-0.5 rounded-full font-medium" style="background:${col}22;color:${col}">${e.tag}</span>
+        <span class="text-xs" style="color:#555">${wc} words</span>
+      </div>
+      <p class="text-sm" style="color:#ccc">${e.text.substring(0,200)}${e.text.length>200?'...':''}</p>
+    </div>`;
+  }).join('') : '<div class="text-sm" style="color:#555">No entries yet. Start logging your study sessions!</div>';
+}
+
+// ========== REVISION TRACKER ==========
+function getRevisions() { return JSON.parse(localStorage.getItem('upsc_revision') || '[]'); }
+function saveRevisions(r) { localStorage.setItem('upsc_revision', JSON.stringify(r)); }
+
+function nextRevDate(lastRevised, times) {
+  const gaps = [1,3,7,14,30];
+  const gap = gaps[Math.min(times, gaps.length-1)];
+  const d = new Date(lastRevised);
+  d.setDate(d.getDate() + gap);
+  return d.toISOString().split('T')[0];
+}
+
+function addRevision() {
+  const topic = document.getElementById('rev-topic').value.trim();
+  if (!topic) return;
+  const subject = document.getElementById('rev-subject').value;
+  const today = new Date().toISOString().split('T')[0];
+  const revs = getRevisions();
+  revs.push({ topic, subject, dateAdded: today, lastRevised: today, timesRevised: 0, nextRevision: nextRevDate(today, 0) });
+  saveRevisions(revs);
+  document.getElementById('rev-topic').value = '';
+  renderRevisions();
+}
+
+function markRevised(idx) {
+  const revs = getRevisions();
+  const today = new Date().toISOString().split('T')[0];
+  revs[idx].timesRevised++;
+  revs[idx].lastRevised = today;
+  revs[idx].nextRevision = nextRevDate(today, revs[idx].timesRevised);
+  saveRevisions(revs);
+  renderRevisions();
+}
+
+function deleteRevision(idx) {
+  const revs = getRevisions();
+  revs.splice(idx, 1);
+  saveRevisions(revs);
+  renderRevisions();
+}
+
+function renderRevisions() {
+  const revs = getRevisions();
+  const today = new Date().toISOString().split('T')[0];
+  const tbody = document.getElementById('revision-table');
+  tbody.innerHTML = revs.length ? revs.map((r, i) => {
+    const overdue = r.nextRevision < today;
+    const due = r.nextRevision === today;
+    const rowClass = overdue ? 'revision-row-overdue' : due ? 'revision-row-due' : 'revision-row-ok';
+    return `<tr class="${rowClass} border-b" style="border-color:#2d2d3a">
+      <td class="px-4 py-3">${r.topic}</td>
+      <td class="px-4 py-3 text-xs" style="color:#888">${r.subject}</td>
+      <td class="px-4 py-3 text-xs" style="color:#888">${r.lastRevised}</td>
+      <td class="px-4 py-3 text-center">${r.timesRevised}</td>
+      <td class="px-4 py-3 text-xs ${overdue ? 'text-red-400' : due ? 'text-yellow-400' : 'text-green-400'}">${r.nextRevision}</td>
+      <td class="px-4 py-3 text-center">
+        <button onclick="markRevised(${i})" class="accent-bg px-3 py-1 rounded text-xs text-white mr-1">✓ Done</button>
+        <button onclick="deleteRevision(${i})" class="px-3 py-1 rounded text-xs" style="background:#3b0f0f;color:#f87171">✕</button>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" class="px-4 py-8 text-center text-sm" style="color:#555">No topics added yet. Add your first topic above!</td></tr>`;
+}
+
+// ========== TIMER ==========
+let timerInterval = null;
+let timerTotal = 0;
+let timerRemaining = 0;
+let timerRunning = false;
+let timerPresetName = '';
+let alertedAt30 = false;
+
+function setPreset(name, minutes) {
+  resetTimer();
+  timerPresetName = name;
+  timerTotal = minutes * 60;
+  timerRemaining = timerTotal;
+  document.getElementById('timer-preset-label').textContent = name + ' — ' + minutes + ' minutes';
+  updateTimerDisplay();
+}
+
+function promptCustom() {
+  const m = parseInt(prompt('Enter duration in minutes:'));
+  if (m && m > 0) setPreset('Custom Session', m);
+}
+
+function startTimer() {
+  if (timerRunning || timerRemaining <= 0) return;
+  timerRunning = true;
+  timerInterval = setInterval(() => {
+    timerRemaining--;
+    updateTimerDisplay();
+    if (timerRemaining === 1800 && !alertedAt30) {
+      alertedAt30 = true;
+      beep(2);
+    }
+    if (timerRemaining <= 0) {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      beep(3);
+      document.getElementById('modal').classList.remove('hidden');
+    }
+  }, 1000);
+}
+
+function pauseTimer() {
+  if (timerRunning) { clearInterval(timerInterval); timerRunning = false; }
+  else if (timerRemaining > 0) startTimer();
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  timerRemaining = timerTotal;
+  alertedAt30 = false;
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+  const h = Math.floor(timerRemaining / 3600);
+  const m = Math.floor((timerRemaining % 3600) / 60);
+  const s = timerRemaining % 60;
+  document.getElementById('timer-display').textContent =
+    String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  const pct = timerTotal > 0 ? (timerRemaining / timerTotal) * 100 : 100;
+  document.getElementById('timer-progress').style.width = pct + '%';
+}
+
+function beep(count) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    let time = ctx.currentTime;
+    for (let i = 0; i < count; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.3, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+      osc.start(time); osc.stop(time + 0.3);
+      time += 0.4;
+    }
+  } catch(e) {}
+}
+
+function logSession() {
+  const entries = JSON.parse(localStorage.getItem('upsc_log') || '[]');
+  entries.unshift({ date: new Date().toISOString(), tag: 'General', text: 'Mock test session completed: ' + timerPresetName });
+  localStorage.setItem('upsc_log', JSON.stringify(entries));
+  closeModal();
+  renderLog();
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.add('hidden');
+}
+
+// ========== INIT ==========
+initDashboard();
+initSyllabus();
+initMaterial();
+initResources();
+renderLog();
+renderRevisions();
+</script>
+</body>
+</html>
