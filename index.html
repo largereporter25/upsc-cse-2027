@@ -29,9 +29,45 @@
     input:focus, textarea:focus, select:focus { outline: none !important; border-color: #6c63ff !important; box-shadow: 0 0 0 2px #6c63ff22 !important; }
     .modal-overlay { position: fixed; inset: 0; background: #000000aa; z-index: 1000; display: flex; align-items: center; justify-content: center; }
     .tag-ncert { background: #1e3a5f; color: #60a5fa; } .tag-reference { background: #1a2e1a; color: #4ade80; } .tag-syllabus { background: #2d1f00; color: #fbbf24; }
+
+    /* ===== CALENDAR STYLES ===== */
+    .cal-grid { display: grid; grid-template-rows: repeat(7, 13px); grid-auto-flow: column; gap: 2px; overflow-x: auto; padding-bottom: 4px; }
+    .cal-cell { width: 13px; height: 13px; border-radius: 2px; cursor: pointer; transition: all 0.15s; position: relative; }
+    .cal-cell:hover { transform: scale(1.4); z-index: 10; }
+    .cal-cell[data-h="0"] { background: #161b22; }
+    .cal-cell[data-h="1"] { background: #0e4429; }
+    .cal-cell[data-h="2"] { background: #006d32; }
+    .cal-cell[data-h="3"] { background: #26a641; }
+    .cal-cell[data-h="4"] { background: #39d353; }
+    .cal-cell[data-h="5"] { background: #56e86a; }
+    .cal-cell[data-h="6"] { background: #6ff57a; }
+    .cal-cell[data-h="7"] { background: #8cff96; }
+    .cal-cell[data-h="8"] { background: #b4ffb4; }
+    .cal-tooltip { position: fixed; background: #1a1a24; border: 1px solid #2d2d3a; padding: 6px 10px; border-radius: 6px; font-size: 11px; pointer-events: none; z-index: 999; white-space: nowrap; color: #e2e8f0; box-shadow: 0 4px 12px #00000088; display: none; }
+    .cal-day-labels { display: flex; flex-direction: column; gap: 2px; margin-right: 6px; }
+    .cal-day-label { height: 13px; font-size: 9px; color: #555; display: flex; align-items: center; }
+    .cal-modal { position: fixed; inset: 0; background: #000000cc; z-index: 2000; display: flex; align-items: center; justify-content: center; }
+    .cal-modal.hidden { display: none; }
+    .cal-modal-card { background: #1a1a24; border: 1px solid #2d2d3a; border-radius: 16px; padding: 28px; width: 380px; max-width: 95vw; }
+    .cal-stat { background: #13131a; border: 1px solid #2d2d3a; border-radius: 10px; padding: 14px 18px; }
+
+    /* ===== BOOK LIST STYLES ===== */
+    .book-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid #2d2d3a; background: #13131a; transition: border-color 0.2s; }
+    .book-item:hover { border-color: #6c63ff44; }
+    .book-status-btn { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; transition: transform 0.15s; }
+    .book-status-btn:hover { transform: scale(1.2); }
+    .book-owned { background: #1a2e1a; border-left: 3px solid #22c55e; }
+    .book-cat-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6c63ff; margin: 18px 0 8px; padding-left: 4px; }
+    .book-group-title { font-size: 13px; font-weight: 600; color: #a78bfa; margin: 14px 0 6px; padding-left: 4px; border-left: 2px solid #6c63ff55; padding-left: 8px; }
+    .tag-buy { background: #2d1a00; color: #fb923c; }
+    .tag-free { background: #0f2d1a; color: #4ade80; }
+    .tag-owned { background: #1a2e1a; color: #86efac; }
   </style>
 </head>
 <body class="flex h-screen overflow-hidden">
+
+<!-- Tooltip -->
+<div class="cal-tooltip" id="cal-tooltip"></div>
 
 <!-- Mobile hamburger -->
 <div class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 md:hidden" style="background:#13131a;border-bottom:1px solid #2d2d3a">
@@ -49,8 +85,10 @@
   </div>
   <nav class="flex-1 overflow-y-auto py-4">
     <div class="nav-link active px-6 py-3 text-sm font-medium" data-section="dashboard">📊 Dashboard</div>
+    <div class="nav-link px-6 py-3 text-sm font-medium" data-section="calendar">📅 Study Calendar</div>
     <div class="nav-link px-6 py-3 text-sm font-medium" data-section="syllabus">📋 Syllabus Tracker</div>
     <div class="nav-link px-6 py-3 text-sm font-medium" data-section="material">📚 Study Material</div>
+    <div class="nav-link px-6 py-3 text-sm font-medium" data-section="books">📖 Physical Books</div>
     <div class="nav-link px-6 py-3 text-sm font-medium" data-section="resources">🔗 Resources</div>
     <div class="nav-link px-6 py-3 text-sm font-medium" data-section="log">📝 Daily Log</div>
     <div class="nav-link px-6 py-3 text-sm font-medium" data-section="revision">🔁 Revision Tracker</div>
@@ -90,17 +128,79 @@
       </div>
     </div>
 
+    <!-- STUDY CALENDAR -->
+    <div id="sec-calendar" class="section">
+      <h1 class="text-2xl font-bold mb-2">📅 Study Calendar</h1>
+      <p class="text-sm mb-6" style="color:#888">Click any day to log your study hours. Jun 2026 → May 2027.</p>
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" id="cal-stats-row">
+        <div class="cal-stat"><div class="text-xs mb-1" style="color:#888">THIS MONTH</div><div class="text-xl font-bold accent" id="stat-month">0h</div></div>
+        <div class="cal-stat"><div class="text-xs mb-1" style="color:#888">ALL TIME</div><div class="text-xl font-bold accent" id="stat-total">0h</div></div>
+        <div class="cal-stat"><div class="text-xs mb-1" style="color:#888">CURRENT STREAK</div><div class="text-xl font-bold" style="color:#22c55e" id="stat-streak">0 days</div></div>
+        <div class="cal-stat"><div class="text-xs mb-1" style="color:#888">BEST STREAK</div><div class="text-xl font-bold" style="color:#f59e0b" id="stat-best">0 days</div></div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+        <div class="cal-stat"><div class="text-xs mb-1" style="color:#888">AVG HRS/DAY</div><div class="text-lg font-bold accent" id="stat-avg">0h</div></div>
+        <div class="cal-stat"><div class="text-xs mb-1" style="color:#888">DAYS STUDIED</div><div class="text-lg font-bold accent" id="stat-days">0</div></div>
+        <div class="cal-stat"><div class="text-xs mb-1" style="color:#888">BEST DAY</div><div class="text-lg font-bold" style="color:#b4ffb4" id="stat-bestday">—</div></div>
+      </div>
+
+      <!-- Calendar heatmap -->
+      <div class="card rounded-xl p-5 mb-4">
+        <div id="cal-month-labels" class="flex mb-1 ml-8" style="gap:2px;overflow-x:auto;"></div>
+        <div class="flex">
+          <div class="cal-day-labels">
+            <div class="cal-day-label" style="height:15px"></div>
+            <div class="cal-day-label">M</div>
+            <div class="cal-day-label"></div>
+            <div class="cal-day-label">W</div>
+            <div class="cal-day-label"></div>
+            <div class="cal-day-label">F</div>
+            <div class="cal-day-label"></div>
+          </div>
+          <div class="cal-grid" id="cal-grid" style="overflow-x:auto;max-width:100%"></div>
+        </div>
+        <!-- Legend -->
+        <div class="flex items-center gap-2 mt-4 text-xs" style="color:#555">
+          <span>Less</span>
+          <div style="width:13px;height:13px;border-radius:2px;background:#161b22"></div>
+          <div style="width:13px;height:13px;border-radius:2px;background:#0e4429"></div>
+          <div style="width:13px;height:13px;border-radius:2px;background:#26a641"></div>
+          <div style="width:13px;height:13px;border-radius:2px;background:#39d353"></div>
+          <div style="width:13px;height:13px;border-radius:2px;background:#56e86a"></div>
+          <div style="width:13px;height:13px;border-radius:2px;background:#b4ffb4"></div>
+          <span>More</span>
+          <span class="ml-2" style="color:#888">= 1h increments, 8h = max</span>
+        </div>
+      </div>
+    </div>
+
     <!-- SYLLABUS -->
     <div id="sec-syllabus" class="section">
       <h1 class="text-2xl font-bold mb-6">📋 Syllabus Tracker</h1>
       <div id="syllabus-content" class="space-y-6"></div>
     </div>
 
-    <!-- STUDY MATERIAL -->
+    <!-- STUDY MATERIAL (Digital PDFs) -->
     <div id="sec-material" class="section">
-      <h1 class="text-2xl font-bold mb-6">📚 Study Material</h1>
-      <p class="text-sm mb-4" style="color:#888">Click the status dot to cycle: 🔴 Not Started → 🟡 In Progress → 🟢 Read</p>
+      <h1 class="text-2xl font-bold mb-2">📚 Study Material</h1>
+      <p class="text-sm mb-4" style="color:#888">Digital PDFs from Google Drive. Click the status dot to cycle: 🔴 Not Started → 🟡 In Progress → 🟢 Read</p>
       <div id="material-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+
+    <!-- PHYSICAL BOOKS -->
+    <div id="sec-books" class="section">
+      <h1 class="text-2xl font-bold mb-2">📖 Physical Books</h1>
+      <p class="text-sm mb-2" style="color:#888">Click the dot to cycle status: ⬜ To Buy → 🟠 Bought → 🔵 Reading → 🟢 Done</p>
+      <div class="flex flex-wrap gap-2 mb-6">
+        <div class="text-xs px-3 py-1 rounded-full" style="background:#13131a;border:1px solid #2d2d3a;color:#888">⬜ To Buy</div>
+        <div class="text-xs px-3 py-1 rounded-full" style="background:#2d1a00;color:#fb923c;border:1px solid #fb923c44">🟠 Bought</div>
+        <div class="text-xs px-3 py-1 rounded-full" style="background:#1e3a5f;color:#60a5fa;border:1px solid #60a5fa44">🔵 Reading</div>
+        <div class="text-xs px-3 py-1 rounded-full" style="background:#1a2e1a;color:#4ade80;border:1px solid #4ade8044">🟢 Done</div>
+        <div class="text-xs px-3 py-1 rounded-full ml-auto" style="background:#13131a;border:1px solid #6c63ff44;color:#6c63ff" id="books-progress-label">0 / 0 done</div>
+      </div>
+      <div id="books-content" class="space-y-1"></div>
     </div>
 
     <!-- RESOURCES -->
@@ -188,7 +288,7 @@
   </main>
 </div>
 
-<!-- Modal -->
+<!-- Timer complete modal -->
 <div id="modal" class="modal-overlay hidden">
   <div class="card rounded-xl p-6 max-w-sm w-full mx-4 text-center">
     <div class="text-lg font-semibold mb-2">Session Complete! 🎉</div>
@@ -196,6 +296,23 @@
     <div class="flex gap-3 justify-center">
       <button onclick="logSession()" class="accent-bg px-5 py-2 rounded-lg font-semibold text-white">Yes, log it</button>
       <button onclick="closeModal()" class="px-5 py-2 rounded-lg font-semibold" style="background:#2d2d3a">No thanks</button>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar Day Modal -->
+<div class="cal-modal hidden" id="cal-modal">
+  <div class="cal-modal-card">
+    <div class="font-semibold text-base mb-1" id="cal-modal-date">—</div>
+    <div class="text-xs mb-5" style="color:#555">Log your study session for this day</div>
+    <label class="block text-xs mb-1" style="color:#888">HOURS STUDIED</label>
+    <input type="number" id="cal-modal-hours" min="0" max="16" step="0.5" class="w-full rounded-lg p-3 text-sm mb-4" placeholder="0" />
+    <label class="block text-xs mb-1" style="color:#888">WHAT DID YOU STUDY?</label>
+    <textarea id="cal-modal-notes" rows="3" class="w-full rounded-lg p-3 text-sm resize-none mb-5" placeholder="e.g. Laxmikanth Ch 4, Ancient History NCERTs..."></textarea>
+    <div class="flex gap-3">
+      <button onclick="saveCalEntry()" class="accent-bg flex-1 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90">Save</button>
+      <button onclick="closeCalModal()" class="flex-1 py-2 rounded-lg text-sm font-semibold" style="background:#2d2d3a">Cancel</button>
+      <button onclick="clearCalEntry()" class="px-4 py-2 rounded-lg text-sm" style="background:#3b0f0f;color:#f87171" id="cal-modal-clear" title="Clear entry">✕</button>
     </div>
   </div>
 </div>
@@ -273,6 +390,120 @@ const RESOURCES = [
   ]}
 ];
 
+// ========== PHYSICAL BOOKS DATA ==========
+const PHYSICAL_BOOKS = [
+  {
+    section: 'NCERTs — Buy All Physically',
+    groups: [
+      { group: 'History', books: [
+        { id: 'ncert-h6', name: 'Class 6 — Our Pasts I' },
+        { id: 'ncert-h7', name: 'Class 7 — Our Pasts II' },
+        { id: 'ncert-h8', name: 'Class 8 — Our Pasts III' },
+        { id: 'ncert-h9', name: 'Class 9 — India and the Contemporary World I' },
+        { id: 'ncert-h10', name: 'Class 10 — India and the Contemporary World II' },
+        { id: 'ncert-h11', name: 'Class 11 — Themes in World History' },
+        { id: 'ncert-h12a', name: 'Class 12 — Themes in Indian History I' },
+        { id: 'ncert-h12b', name: 'Class 12 — Themes in Indian History II' },
+        { id: 'ncert-h12c', name: 'Class 12 — Themes in Indian History III' },
+      ]},
+      { group: 'Political Science / Polity', books: [
+        { id: 'ncert-p9', name: 'Class 9 — Democratic Politics I' },
+        { id: 'ncert-p10', name: 'Class 10 — Democratic Politics II' },
+        { id: 'ncert-p11a', name: 'Class 11 — Political Theory' },
+        { id: 'ncert-p11b', name: 'Class 11 — Indian Constitution at Work' },
+        { id: 'ncert-p12a', name: 'Class 12 — Contemporary World Politics' },
+        { id: 'ncert-p12b', name: 'Class 12 — Politics in India Since Independence' },
+      ]},
+      { group: 'Geography', books: [
+        { id: 'ncert-g6', name: 'Class 6 — The Earth: Our Habitat' },
+        { id: 'ncert-g7', name: 'Class 7 — Our Environment' },
+        { id: 'ncert-g8', name: 'Class 8 — Resource and Development' },
+        { id: 'ncert-g9', name: 'Class 9 — Contemporary India I' },
+        { id: 'ncert-g10', name: 'Class 10 — Contemporary India II' },
+        { id: 'ncert-g11a', name: 'Class 11 — Fundamentals of Physical Geography' },
+        { id: 'ncert-g11b', name: 'Class 11 — India: Physical Environment' },
+        { id: 'ncert-g12a', name: 'Class 12 — Fundamentals of Human Geography' },
+        { id: 'ncert-g12b', name: 'Class 12 — India: People and Economy' },
+      ]},
+      { group: 'Economics', books: [
+        { id: 'ncert-e9', name: 'Class 9 — Economics' },
+        { id: 'ncert-e10', name: 'Class 10 — Understanding Economic Development' },
+        { id: 'ncert-e11', name: 'Class 11 — Indian Economic Development' },
+        { id: 'ncert-e12a', name: 'Class 12 — Introductory Microeconomics' },
+        { id: 'ncert-e12b', name: 'Class 12 — Introductory Macroeconomics' },
+      ]},
+      { group: 'Science (Prelims: Env + General Science)', books: [
+        { id: 'ncert-s8', name: 'Class 8 — Science' },
+        { id: 'ncert-s9', name: 'Class 9 — Science' },
+        { id: 'ncert-s10', name: 'Class 10 — Science' },
+      ]},
+      { group: 'Sociology (GS1 Indian Society)', books: [
+        { id: 'ncert-soc11', name: 'Class 11 — Introducing Sociology' },
+        { id: 'ncert-soc12a', name: 'Class 12 — Indian Society' },
+        { id: 'ncert-soc12b', name: 'Class 12 — Social Change and Development in India' },
+      ]},
+    ]
+  },
+  {
+    section: 'GS Standard References',
+    note: 'Gandhi Road likely has most secondhand.',
+    groups: [
+      { group: 'Polity', books: [
+        { id: 'gs-lax', name: 'M. Laxmikanth — Indian Polity', owned: true },
+        { id: 'gs-basu', name: 'D.D. Basu — Introduction to the Constitution of India', owned: true },
+      ]},
+      { group: 'History (Modern)', books: [
+        { id: 'gs-bipin', name: 'Bipin Chandra — India\'s Struggle for Independence' },
+        { id: 'gs-spectrum', name: 'Spectrum — A Brief History of Modern India (Rajiv Ahir)' },
+      ]},
+      { group: 'History (Ancient & Medieval)', books: [
+        { id: 'gs-rs-sharma', name: 'R.S. Sharma — Ancient India (old NCERT)' },
+        { id: 'gs-satish', name: 'Satish Chandra — Medieval India (old NCERT)' },
+      ]},
+      { group: 'Geography', books: [
+        { id: 'gs-leong', name: 'G.C. Leong — Certificate Physical and Human Geography' },
+        { id: 'gs-atlas', name: 'Orient Blackswan School Atlas (buy new — maps must be current)' },
+      ]},
+      { group: 'Economy', books: [
+        { id: 'gs-ramesh', name: 'Ramesh Singh — Indian Economy' },
+        { id: 'gs-eco-survey', name: 'Economic Survey (latest — free PDF, don\'t buy)', free: true },
+      ]},
+      { group: 'Environment', books: [
+        { id: 'gs-shankar', name: 'Shankar IAS — Environment (buy new, editions matter)' },
+      ]},
+      { group: 'Art & Culture', books: [
+        { id: 'gs-nitin', name: 'Nitin Singhania — Indian Art and Culture (buy new, editions matter)' },
+      ]},
+      { group: 'Science & Technology', books: [
+        { id: 'gs-ravi', name: 'Ravi Agrahari — Science and Technology' },
+      ]},
+    ]
+  },
+  {
+    section: 'CSAT — Paper 2',
+    note: 'CSAT requires qualifying 33%. Do not neglect it.',
+    groups: [
+      { group: 'CSAT Books', books: [
+        { id: 'csat-arihant', name: 'Arihant — CSAT Paper 2 (comprehensive)' },
+        { id: 'csat-quant', name: 'R.S. Aggarwal — Quantitative Aptitude' },
+        { id: 'csat-reasoning', name: 'R.S. Aggarwal — Verbal and Non-Verbal Reasoning' },
+        { id: 'csat-pyq', name: 'Previous Year CSAT Papers — compiled PYQ book (last 10 years)' },
+      ]},
+    ]
+  },
+  {
+    section: 'PSIR Optional',
+    note: 'Political Science and International Relations — your optional.',
+    groups: [
+      { group: 'PSIR Books', books: [
+        { id: 'psir-gauba1', name: 'O.P. Gauba — An Introduction to Political Theory (Paper 1)' },
+        { id: 'psir-palshikar', name: 'Suhas Palshikar / Rajendra Vora — Indian Government and Politics (Paper 1)' },
+        { id: 'psir-gauba2', name: 'O.P. Gauba — International Relations (Paper 2)' },
+      ]},
+    ]
+  }
+];
+
 // ========== NAVIGATION ==========
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -280,6 +511,8 @@ function showSection(id) {
   document.getElementById('sec-' + id).classList.add('active');
   document.querySelector('[data-section="' + id + '"]').classList.add('active');
   closeSidebar();
+  if (id === 'calendar') renderCalendar();
+  if (id === 'books') renderBooks();
 }
 document.querySelectorAll('.nav-link').forEach(link => {
   link.addEventListener('click', () => showSection(link.dataset.section));
@@ -298,7 +531,6 @@ document.getElementById('hamburger').addEventListener('click', () => {
 
 // ========== DASHBOARD ==========
 function initDashboard() {
-  // Countdown
   function updateCountdown() {
     const prelims = new Date('2027-05-24T00:00:00');
     const now = new Date();
@@ -307,17 +539,11 @@ function initDashboard() {
   }
   updateCountdown();
   setInterval(updateCountdown, 1000);
-
-  // Quote
   const doy = Math.floor((new Date() - new Date(new Date().getFullYear(),0,0)) / 86400000);
   document.getElementById('quote').textContent = QUOTES[doy % QUOTES.length];
-
-  // Focus
   const fa = document.getElementById('focus-area');
   fa.value = localStorage.getItem('upsc_focus') || '';
   fa.addEventListener('input', () => localStorage.setItem('upsc_focus', fa.value));
-
-  // Progress bars
   renderProgressBars();
 }
 
@@ -367,7 +593,6 @@ function toggleSyllabus(paper, idx, el) {
   const span = label.querySelector('span');
   span.style.textDecoration = el.checked ? 'line-through' : 'none';
   span.style.color = el.checked ? '#555' : '#ccc';
-  // update bar
   const topics = SYLLABUS[paper];
   const checked = topics.filter((t,i) => localStorage.getItem('upsc_syllabus_' + paper + '_' + i) === '1').length;
   const pct = Math.round((checked / topics.length) * 100);
@@ -404,6 +629,80 @@ function cycleStatus(file, el) {
   const next = cycle[cur] || 'red';
   el.style.background = next;
   localStorage.setItem('upsc_file_' + file, next);
+}
+
+// ========== PHYSICAL BOOKS ==========
+const BOOK_STATUSES = ['none','bought','reading','done'];
+const BOOK_STATUS_COLORS = { none:'#2d2d3a', bought:'#fb923c', reading:'#60a5fa', done:'#22c55e' };
+const BOOK_STATUS_LABELS = { none:'To Buy', bought:'Bought', reading:'Reading', done:'Done' };
+
+function getBookStatus(id) {
+  return localStorage.getItem('upsc_book_' + id) || 'none';
+}
+function setBookStatus(id, status) {
+  localStorage.setItem('upsc_book_' + id, status);
+}
+
+function renderBooks() {
+  const container = document.getElementById('books-content');
+  container.innerHTML = '';
+  let total = 0, done = 0;
+
+  PHYSICAL_BOOKS.forEach(section => {
+    let html = `<div class="mb-8">
+      <div class="book-cat-header">${section.section}</div>`;
+    if (section.note) html += `<div class="text-xs mb-3 ml-1" style="color:#666">${section.note}</div>`;
+    section.groups.forEach(group => {
+      html += `<div class="book-group-title">${group.group}</div>`;
+      html += `<div class="space-y-2 mb-2">`;
+      group.books.forEach(book => {
+        total++;
+        const status = book.owned ? (getBookStatus(book.id) === 'none' ? 'done' : getBookStatus(book.id)) : getBookStatus(book.id);
+        if (status === 'done') done++;
+        const color = BOOK_STATUS_COLORS[status];
+        const label = BOOK_STATUS_LABELS[status];
+        const isOwned = book.owned;
+        const isFree = book.free;
+        let tags = '';
+        if (isOwned) tags += `<span class="text-xs px-2 py-0.5 rounded-full tag-owned ml-1">✓ Owned</span>`;
+        if (isFree) tags += `<span class="text-xs px-2 py-0.5 rounded-full tag-free ml-1">Free PDF</span>`;
+
+        html += `<div class="book-item ${isOwned ? 'book-owned' : ''}">
+          <button class="book-status-btn" style="background:${color}" onclick="cycleBookStatus('${book.id}', this)" title="${label}"></button>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm" style="color:${status === 'done' ? '#555' : '#ccc'};${status === 'done' ? 'text-decoration:line-through' : ''}">${book.name}</div>
+          </div>
+          ${tags}
+        </div>`;
+      });
+      html += `</div>`;
+    });
+    html += `</div>`;
+    container.innerHTML += html;
+  });
+
+  document.getElementById('books-progress-label').textContent = `${done} / ${total} done`;
+}
+
+function cycleBookStatus(id, btn) {
+  const cur = localStorage.getItem('upsc_book_' + id) || 'none';
+  const idx = BOOK_STATUSES.indexOf(cur);
+  const next = BOOK_STATUSES[(idx + 1) % BOOK_STATUSES.length];
+  setBookStatus(id, next);
+  btn.style.background = BOOK_STATUS_COLORS[next];
+  btn.title = BOOK_STATUS_LABELS[next];
+  const item = btn.closest('.book-item');
+  const nameEl = item.querySelector('.flex-1 .text-sm');
+  nameEl.style.color = next === 'done' ? '#555' : '#ccc';
+  nameEl.style.textDecoration = next === 'done' ? 'line-through' : 'none';
+  // update progress
+  let total = 0, done = 0;
+  PHYSICAL_BOOKS.forEach(s => s.groups.forEach(g => g.books.forEach(b => {
+    total++;
+    const st = b.owned ? (getBookStatus(b.id) === 'none' ? 'done' : getBookStatus(b.id)) : getBookStatus(b.id);
+    if (st === 'done') done++;
+  })));
+  document.getElementById('books-progress-label').textContent = `${done} / ${total} done`;
 }
 
 // ========== RESOURCES ==========
@@ -556,14 +855,9 @@ function startTimer() {
   timerInterval = setInterval(() => {
     timerRemaining--;
     updateTimerDisplay();
-    if (timerRemaining === 1800 && !alertedAt30) {
-      alertedAt30 = true;
-      beep(2);
-    }
+    if (timerRemaining === 1800 && !alertedAt30) { alertedAt30 = true; beep(2); }
     if (timerRemaining <= 0) {
-      clearInterval(timerInterval);
-      timerRunning = false;
-      beep(3);
+      clearInterval(timerInterval); timerRunning = false; beep(3);
       document.getElementById('modal').classList.remove('hidden');
     }
   }, 1000);
@@ -576,9 +870,7 @@ function pauseTimer() {
 
 function resetTimer() {
   clearInterval(timerInterval);
-  timerRunning = false;
-  timerRemaining = timerTotal;
-  alertedAt30 = false;
+  timerRunning = false; timerRemaining = timerTotal; alertedAt30 = false;
   updateTimerDisplay();
 }
 
@@ -613,12 +905,233 @@ function logSession() {
   const entries = JSON.parse(localStorage.getItem('upsc_log') || '[]');
   entries.unshift({ date: new Date().toISOString(), tag: 'General', text: 'Mock test session completed: ' + timerPresetName });
   localStorage.setItem('upsc_log', JSON.stringify(entries));
-  closeModal();
-  renderLog();
+  closeModal(); renderLog();
 }
 
-function closeModal() {
-  document.getElementById('modal').classList.add('hidden');
+function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+// ========== STUDY CALENDAR ==========
+const CAL_KEY = 'upsc_study_log';
+let calCurrentDate = '';
+
+function getCalData() { return JSON.parse(localStorage.getItem(CAL_KEY) || '{}'); }
+function saveCalData(d) { localStorage.setItem(CAL_KEY, JSON.stringify(d)); }
+
+function hoursToLevel(h) {
+  if (!h || h <= 0) return 0;
+  if (h >= 8) return 8;
+  return Math.min(8, Math.ceil(h));
+}
+
+function dateKey(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+function renderCalendar() {
+  const data = getCalData();
+  const grid = document.getElementById('cal-grid');
+  const monthLabels = document.getElementById('cal-month-labels');
+  grid.innerHTML = '';
+  monthLabels.innerHTML = '';
+
+  // Prep window: 24 Jun 2026 → 24 May 2027
+  const start = new Date('2026-06-24');
+  // align to Monday
+  const dayOfWeek = (start.getDay() + 6) % 7; // 0=Mon
+  const gridStart = addDays(start, -dayOfWeek);
+  const end = new Date('2027-05-25');
+
+  // build month label positions
+  const months = [];
+  let cur = new Date(gridStart);
+  let col = 0;
+  let lastMonth = -1;
+  const cells = [];
+
+  while (cur <= end) {
+    const weekCells = [];
+    for (let d = 0; d < 7; d++) {
+      const dk = dateKey(cur);
+      const entry = data[dk];
+      const hours = entry ? entry.hours : 0;
+      const level = hoursToLevel(hours);
+      const inRange = cur >= start && cur <= end;
+      weekCells.push({ dk, hours, level, inRange, date: new Date(cur) });
+      cur = addDays(cur, 1);
+    }
+    // month label
+    const firstInRange = weekCells.find(c => c.inRange);
+    if (firstInRange) {
+      const m = firstInRange.date.getMonth();
+      if (m !== lastMonth) {
+        months.push({ col, month: m, year: firstInRange.date.getFullYear() });
+        lastMonth = m;
+      }
+    }
+    cells.push(weekCells);
+    col++;
+  }
+
+  // render month labels
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  months.forEach((m, i) => {
+    const span = document.createElement('span');
+    span.textContent = MONTH_NAMES[m.month];
+    span.style.cssText = `font-size:9px;color:#555;min-width:${(i < months.length-1 ? (months[i+1].col - m.col) : 4) * 15}px;white-space:nowrap`;
+    monthLabels.appendChild(span);
+  });
+
+  // render cells
+  cells.forEach(week => {
+    week.forEach(cell => {
+      const div = document.createElement('div');
+      div.className = 'cal-cell';
+      div.setAttribute('data-h', cell.inRange ? cell.level : '-1');
+      div.style.background = cell.inRange
+        ? ['#161b22','#0e4429','#006d32','#26a641','#39d353','#56e86a','#6ff57a','#8cff96','#b4ffb4'][cell.level]
+        : '#0a0a0f';
+      div.style.cursor = cell.inRange ? 'pointer' : 'default';
+      div.style.opacity = cell.inRange ? '1' : '0.2';
+
+      if (cell.inRange) {
+        const entry = data[cell.dk];
+        div.addEventListener('mouseenter', (e) => {
+          const tip = document.getElementById('cal-tooltip');
+          const d = cell.date;
+          const ds = d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+          tip.textContent = entry
+            ? `${ds} — ${entry.hours}h${entry.notes ? ': ' + entry.notes.substring(0,40) : ''}`
+            : `${ds} — No entry`;
+          tip.style.display = 'block';
+          tip.style.left = (e.clientX + 12) + 'px';
+          tip.style.top = (e.clientY - 28) + 'px';
+        });
+        div.addEventListener('mousemove', (e) => {
+          const tip = document.getElementById('cal-tooltip');
+          tip.style.left = (e.clientX + 12) + 'px';
+          tip.style.top = (e.clientY - 28) + 'px';
+        });
+        div.addEventListener('mouseleave', () => {
+          document.getElementById('cal-tooltip').style.display = 'none';
+        });
+        div.addEventListener('click', () => openCalModal(cell.dk, cell.date));
+      }
+      grid.appendChild(div);
+    });
+  });
+
+  updateCalStats();
+}
+
+function openCalModal(dk, date) {
+  calCurrentDate = dk;
+  const data = getCalData();
+  const entry = data[dk];
+  const d = date;
+  const ds = d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('cal-modal-date').textContent = ds;
+  document.getElementById('cal-modal-hours').value = entry ? entry.hours : '';
+  document.getElementById('cal-modal-notes').value = entry ? (entry.notes || '') : '';
+  document.getElementById('cal-modal-clear').style.display = entry ? 'flex' : 'none';
+  document.getElementById('cal-modal').classList.remove('hidden');
+}
+
+function closeCalModal() {
+  document.getElementById('cal-modal').classList.add('hidden');
+  calCurrentDate = '';
+}
+
+function saveCalEntry() {
+  const h = parseFloat(document.getElementById('cal-modal-hours').value) || 0;
+  const notes = document.getElementById('cal-modal-notes').value.trim();
+  const data = getCalData();
+  if (h > 0 || notes) {
+    data[calCurrentDate] = { hours: h, notes };
+  } else {
+    delete data[calCurrentDate];
+  }
+  saveCalData(data);
+  closeCalModal();
+  renderCalendar();
+}
+
+function clearCalEntry() {
+  const data = getCalData();
+  delete data[calCurrentDate];
+  saveCalData(data);
+  closeCalModal();
+  renderCalendar();
+}
+
+document.getElementById('cal-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeCalModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeCalModal();
+});
+
+function updateCalStats() {
+  const data = getCalData();
+  const entries = Object.entries(data);
+  if (!entries.length) {
+    ['stat-month','stat-total','stat-streak','stat-best','stat-avg','stat-days','stat-bestday'].forEach(id => {
+      document.getElementById(id).textContent = id.includes('day') && id !== 'stat-days' ? '—' : '0' + (id.includes('streak') ? ' days' : (id.includes('avg') || id.includes('month') || id.includes('total') ? 'h' : ''));
+    });
+    return;
+  }
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0,7);
+  let totalH = 0, monthH = 0, bestDayH = 0, bestDayDate = '';
+  entries.forEach(([dk, e]) => {
+    totalH += e.hours || 0;
+    if (dk.startsWith(thisMonth)) monthH += e.hours || 0;
+    if ((e.hours || 0) > bestDayH) { bestDayH = e.hours; bestDayDate = dk; }
+  });
+
+  // streaks
+  const sortedDates = entries.map(([dk]) => dk).sort();
+  let curStreak = 0, bestStreak = 0, streak = 0;
+  const today = dateKey(now);
+  const yesterday = dateKey(addDays(now, -1));
+  // build set
+  const daySet = new Set(entries.filter(([,e]) => (e.hours||0) >= 1).map(([dk]) => dk));
+  // current streak backwards from today
+  let check = today;
+  while (daySet.has(check)) { curStreak++; check = dateKey(addDays(new Date(check), -1)); }
+  if (!daySet.has(today)) {
+    check = yesterday;
+    while (daySet.has(check)) { curStreak++; check = dateKey(addDays(new Date(check), -1)); }
+  }
+  // best streak
+  const sorted = [...daySet].sort();
+  let s = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    if (i === 0) { s = 1; }
+    else {
+      const prev = addDays(new Date(sorted[i]), -1);
+      if (dateKey(prev) === sorted[i-1]) s++;
+      else s = 1;
+    }
+    if (s > bestStreak) bestStreak = s;
+  }
+
+  const daysStudied = entries.filter(([,e]) => (e.hours||0) > 0).length;
+  const avg = daysStudied ? (totalH / daysStudied).toFixed(1) : 0;
+  const bd = bestDayDate ? new Date(bestDayDate).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) + ` (${bestDayH}h)` : '—';
+
+  document.getElementById('stat-month').textContent = monthH.toFixed(1) + 'h';
+  document.getElementById('stat-total').textContent = totalH.toFixed(1) + 'h';
+  document.getElementById('stat-streak').textContent = curStreak + ' day' + (curStreak !== 1 ? 's' : '');
+  document.getElementById('stat-best').textContent = bestStreak + ' day' + (bestStreak !== 1 ? 's' : '');
+  document.getElementById('stat-avg').textContent = avg + 'h';
+  document.getElementById('stat-days').textContent = daysStudied;
+  document.getElementById('stat-bestday').textContent = bd;
 }
 
 // ========== INIT ==========
