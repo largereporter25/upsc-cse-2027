@@ -31,9 +31,9 @@
     .tag-ncert { background: #1e3a5f; color: #60a5fa; } .tag-reference { background: #1a2e1a; color: #4ade80; } .tag-syllabus { background: #2d1f00; color: #fbbf24; }
 
     /* ===== CALENDAR STYLES ===== */
-    .cal-grid { display: grid; grid-template-rows: repeat(7, 13px); grid-auto-flow: column; gap: 2px; overflow-x: auto; padding-bottom: 4px; }
-    .cal-cell { width: 13px; height: 13px; border-radius: 2px; cursor: pointer; transition: all 0.15s; position: relative; }
-    .cal-cell:hover { transform: scale(1.4); z-index: 10; }
+    .cal-grid { display: grid; grid-template-rows: repeat(7, 20px); grid-auto-flow: column; gap: 3px; overflow-x: auto; padding-bottom: 4px; }
+    .cal-cell { width: 20px; height: 20px; border-radius: 3px; cursor: pointer; transition: all 0.15s; position: relative; }
+    .cal-cell:hover { transform: scale(1.3); z-index: 10; }
     .cal-cell[data-h="0"] { background: #161b22; }
     .cal-cell[data-h="1"] { background: #0e4429; }
     .cal-cell[data-h="2"] { background: #006d32; }
@@ -44,8 +44,8 @@
     .cal-cell[data-h="7"] { background: #8cff96; }
     .cal-cell[data-h="8"] { background: #b4ffb4; }
     .cal-tooltip { position: fixed; background: #1a1a24; border: 1px solid #2d2d3a; padding: 6px 10px; border-radius: 6px; font-size: 11px; pointer-events: none; z-index: 999; white-space: nowrap; color: #e2e8f0; box-shadow: 0 4px 12px #00000088; display: none; }
-    .cal-day-labels { display: flex; flex-direction: column; gap: 2px; margin-right: 6px; }
-    .cal-day-label { height: 13px; font-size: 9px; color: #555; display: flex; align-items: center; }
+    .cal-day-labels { display: flex; flex-direction: column; gap: 3px; margin-right: 6px; }
+    .cal-day-label { height: 20px; font-size: 10px; color: #555; display: flex; align-items: center; }
     .cal-modal { position: fixed; inset: 0; background: #000000cc; z-index: 2000; display: flex; align-items: center; justify-content: center; }
     .cal-modal.hidden { display: none; }
     .cal-modal-card { background: #1a1a24; border: 1px solid #2d2d3a; border-radius: 16px; padding: 28px; width: 380px; max-width: 95vw; }
@@ -148,10 +148,10 @@
 
       <!-- Calendar heatmap -->
       <div class="card rounded-xl p-5 mb-4">
-        <div id="cal-month-labels" class="flex mb-1 ml-8" style="gap:2px;overflow-x:auto;"></div>
+        <div id="cal-month-labels" class="flex mb-1 ml-10" style="gap:3px;overflow-x:auto;"></div>
         <div class="flex">
           <div class="cal-day-labels">
-            <div class="cal-day-label" style="height:15px"></div>
+            <div class="cal-day-label" style="height:23px"></div>
             <div class="cal-day-label">M</div>
             <div class="cal-day-label"></div>
             <div class="cal-day-label">W</div>
@@ -164,12 +164,12 @@
         <!-- Legend -->
         <div class="flex items-center gap-2 mt-4 text-xs" style="color:#555">
           <span>Less</span>
-          <div style="width:13px;height:13px;border-radius:2px;background:#161b22"></div>
-          <div style="width:13px;height:13px;border-radius:2px;background:#0e4429"></div>
-          <div style="width:13px;height:13px;border-radius:2px;background:#26a641"></div>
-          <div style="width:13px;height:13px;border-radius:2px;background:#39d353"></div>
-          <div style="width:13px;height:13px;border-radius:2px;background:#56e86a"></div>
-          <div style="width:13px;height:13px;border-radius:2px;background:#b4ffb4"></div>
+          <div style="width:20px;height:20px;border-radius:3px;background:#161b22"></div>
+          <div style="width:20px;height:20px;border-radius:3px;background:#0e4429"></div>
+          <div style="width:20px;height:20px;border-radius:3px;background:#26a641"></div>
+          <div style="width:20px;height:20px;border-radius:3px;background:#39d353"></div>
+          <div style="width:20px;height:20px;border-radius:3px;background:#56e86a"></div>
+          <div style="width:20px;height:20px;border-radius:3px;background:#b4ffb4"></div>
           <span>More</span>
           <span class="ml-2" style="color:#888">= 1h increments, 8h = max</span>
         </div>
@@ -940,8 +940,8 @@ function renderCalendar() {
   grid.innerHTML = '';
   monthLabels.innerHTML = '';
 
-  // Prep window: 24 Jun 2026 → 24 May 2027
-  const start = new Date('2026-06-24');
+  // Prep window: 10 Jun 2026 → 24 May 2027 (2 weeks earlier start)
+  const start = new Date('2026-06-10');
   // align to Monday
   const dayOfWeek = (start.getDay() + 6) % 7; // 0=Mon
   const gridStart = addDays(start, -dayOfWeek);
@@ -983,7 +983,7 @@ function renderCalendar() {
   months.forEach((m, i) => {
     const span = document.createElement('span');
     span.textContent = MONTH_NAMES[m.month];
-    span.style.cssText = `font-size:9px;color:#555;min-width:${(i < months.length-1 ? (months[i+1].col - m.col) : 4) * 15}px;white-space:nowrap`;
+    span.style.cssText = `font-size:9px;color:#555;min-width:${(i < months.length-1 ? (months[i+1].col - m.col) : 4) * 23}px;white-space:nowrap`;
     monthLabels.appendChild(span);
   });
 
